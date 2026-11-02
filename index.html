@@ -129,6 +129,8 @@ nav button.on .ic{background:var(--ac)}
 .tag.u{background:var(--up-l);color:var(--up)}
 .tag.d{background:var(--dn-l);color:var(--dn)}
 canvas{max-width:100%}
+.ch{position:relative;width:100%}
+.ch canvas{width:100% !important;height:100% !important}
 .empty{text-align:center;color:var(--tx3);font-size:13px;padding:26px 10px}
 /* 折叠块 */
 .fold{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
@@ -234,7 +236,7 @@ ol li,ul li{margin-bottom:3px}
         <div class="ttl" style="margin:0"><span id="trendTtl">近 14 天</span>总时长 <span class="sub">· 虚线为目标线</span></div>
         <div class="chips" id="rngChips"></div>
       </div>
-      <canvas id="cTrend" height="122"></canvas>
+      <div class="ch" style="height:180px"><canvas id="cTrend"></canvas></div>
       <div id="fbTrend"></div>
       <div class="grid g3" style="margin-top:12px">
         <div class="kpi"><div class="v" id="sAvg">0</div><div class="l">7日均分钟</div><div class="d" id="sAvgD">--</div></div>
@@ -251,12 +253,12 @@ ol li,ul li{margin-bottom:3px}
 
     <div class="fold" data-fold="apps">
       <div class="fhd">各 App 累计 <span class="fdsub" id="appsSub"></span><i class="ar">▾</i></div>
-      <div class="fbd"><canvas id="cApps" height="130"></canvas><div id="fbApps"></div></div>
+      <div class="fbd"><div class="ch" style="height:150px"><canvas id="cApps"></canvas></div><div id="fbApps"></div></div>
     </div>
 
     <div class="fold" data-fold="hour">
       <div class="fhd">冲动时段分布 <span class="fdsub" id="hourSub"></span><i class="ar">▾</i></div>
-      <div class="fbd"><canvas id="cHour" height="120"></canvas><div id="fbHour"></div></div>
+      <div class="fbd"><div class="ch" style="height:150px"><canvas id="cHour"></canvas></div><div id="fbHour"></div></div>
     </div>
 
     <div class="fold" data-fold="hist">
@@ -438,7 +440,7 @@ var MINDFUL = [
 ];
 
 /* ---------- state ---------- */
-var APP_VER = 'v5';
+var APP_VER = 'v6';
 function defState(){
   return { v:1, apps:DEF_APPS.slice(), daily:{}, urges:[], pw:[],
     settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14, fold:{} } };
