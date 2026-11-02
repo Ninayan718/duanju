@@ -2,6 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -36,9 +39,10 @@ button{font-family:inherit;font-size:15px;cursor:pointer;border:none;background:
 input,select,textarea{font-family:inherit;font-size:16px;color:inherit}
 
 header{padding:calc(14px + env(safe-area-inset-top)) 0 10px}
-header .tt{display:flex;align-items:baseline;justify-content:space-between}
-header h1{font-size:20px;letter-spacing:.5px}
+header .tt{display:flex;align-items:baseline;gap:6px}
+header h1{font-size:20px;letter-spacing:.5px;margin-right:auto}
 header .dt{font-size:13px;color:var(--tx3)}
+header .ver{font-size:11px;color:var(--tx3);opacity:.75;margin-left:6px}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:10px}
 .card.tight{padding:12px}
@@ -163,6 +167,7 @@ ol li,ul li{margin-bottom:3px}
     <div class="tt">
       <h1>断短剧</h1>
       <span class="dt" id="hdDate"></span>
+      <span class="ver" id="appVer"></span>
     </div>
   </header>
 
@@ -270,8 +275,10 @@ ol li,ul li{margin-bottom:3px}
           <button class="btn gh sm" id="btnExport">导出备份</button>
           <button class="btn gh sm" id="btnImport">导入备份</button>
         </div>
+        <button class="btn gh sm" id="btnHardReload" style="width:100%;margin-top:8px">强制刷新（看不到更新时点）</button>
         <input type="file" id="fileImp" accept="application/json" style="display:none">
-        <div class="mini" style="margin-top:10px">数据只存在这台设备的浏览器里，换手机请用导出/导入迁移。清除浏览器数据会丢。</div>
+        <div class="mini" style="margin-top:10px">数据只存在这台设备的浏览器里，换手机请用导出/导入迁移。清除浏览器数据会丢。网页更新不会动你的数据。</div>
+        <div class="mini" style="margin-top:6px">版本 <b id="verTxt"></b></div>
       </div>
     </div>
   </section>
@@ -431,6 +438,7 @@ var MINDFUL = [
 ];
 
 /* ---------- state ---------- */
+var APP_VER = 'v5';
 function defState(){
   return { v:1, apps:DEF_APPS.slice(), daily:{}, urges:[], pw:[],
     settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14, fold:{} } };
@@ -680,6 +688,8 @@ function miniBars(hostId, items, unit){
   });
   host.innerHTML = h + '</div>';
 }
+function hasData(k){ var d=S.daily[k]; if(!d) return false;
+  return tot(k,'m')>0 || tot(k,'o')>0 || !!d.note || !!d.scene || !!d.mood; }
 function renderStat(){
   var RNG = [7,14,30];
   var rng = S.settings.range || 14;
@@ -711,10 +721,10 @@ function renderStat(){
 
   var w7 = lastDays(7), w7p = lastDays(14).slice(0,7);
   var sum7=0, sumP=0, cnt7=0;
-  w7.forEach(function(d){ if(S.daily[d]){ sum7+=tot(d,'m'); cnt7++; } });
-  w7p.forEach(function(d){ if(S.daily[d]) sumP+=tot(d,'m'); });
+  w7.forEach(function(d){ if(hasData(d)){ sum7+=tot(d,'m'); cnt7++; } });
+  w7p.forEach(function(d){ if(hasData(d)) sumP+=tot(d,'m'); });
   var avg = cnt7 ? Math.round(sum7/cnt7) : 0;
-  var avgP = w7p.filter(function(d){return S.daily[d];}).length ? Math.round(sumP/7) : 0;
+  var avgP = w7p.filter(hasData).length ? Math.round(sumP/7) : 0;
   $('sAvg').textContent = avg;
   if(avgP>0){
     var p = Math.round((avg-avgP)/avgP*100);
@@ -723,7 +733,7 @@ function renderStat(){
   } else { $('sAvgD').textContent='--'; $('sAvgD').className='d mut'; }
 
   var m7=0, o7=0;
-  w7.forEach(function(d){ if(S.daily[d]){ m7+=tot(d,'m'); o7+=tot(d,'o'); } });
+  w7.forEach(function(d){ if(hasData(d)){ m7+=tot(d,'m'); o7+=tot(d,'o'); } });
   $('sPer').textContent = o7 ? (m7/o7).toFixed(1) : '0';
 
   var u7 = S.urges.filter(function(u){ return u.ts >= Date.now()-7*864e5; });
@@ -771,7 +781,7 @@ function renderStat(){
 
   renderInsights(days, mv, ov);
 
-  ALLHIST = Object.keys(S.daily).sort().reverse();
+  ALLHIST = Object.keys(S.daily).filter(hasData).sort().reverse();
   $('histSub').textContent = ALLHIST.length ? ALLHIST.length+' 天' : '';
   renderHist(tg);
 }
@@ -812,7 +822,7 @@ function renderInsights(days, mv, ov){
   var topH=null, topN=0; for(var h in hours){ if(hours[h]>topN){ topN=hours[h]; topH=h; } }
   if(topH!=null && topN>=2) out.push(['最危险时段', topH+' 点前后出现了 '+topN+' 次冲动，占总数的 '+Math.round(topN/S.urges.length*100)+'%。这个时段建议直接开灰度 + 专注模式。']);
 
-  var m7=0,o7=0; lastDays(7).forEach(function(d){ if(S.daily[d]){ m7+=tot(d,'m'); o7+=tot(d,'o'); } });
+  var m7=0,o7=0; lastDays(7).forEach(function(d){ if(hasData(d)){ m7+=tot(d,'m'); o7+=tot(d,'o'); } });
   if(o7>0){
     var per = m7/o7;
     out.push(['单次时长', '平均每次打开停留 '+per.toFixed(1)+' 分钟。' +
@@ -820,7 +830,7 @@ function renderInsights(days, mv, ov){
               : '还算可控，继续保持限额即可。')]);
   }
   var over = 0, rec=0;
-  lastDays(7).forEach(function(d){ if(S.daily[d]){ rec++; if(tg>0 && tot(d,'m')>tg) over++; } });
+  lastDays(7).forEach(function(d){ if(hasData(d)){ rec++; if(tg>0 && tot(d,'m')>tg) over++; } });
   if(rec>0) out.push(['达标情况', '近 7 天记录了 '+rec+' 天，其中 '+over+' 天超目标（'+Math.round(over/rec*100)+'%）。' +
     (over/rec>0.5 ? '目标可能定得太紧，建议上调 10 分钟而不是硬扛 —— 反弹比超标更贵。' : '节奏稳定。')]);
 
@@ -1149,6 +1159,11 @@ $('fileImp').addEventListener('change', function(){
 });
 
 /* ---------- boot ---------- */
+$('appVer').textContent = APP_VER;
+$('verTxt').textContent = APP_VER;
+$('btnHardReload').addEventListener('click', function(){
+  location.replace(location.pathname + '?v=' + Date.now());
+});
 applyFolds();
 renderToday();
 renderSurfForm();
