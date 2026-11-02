@@ -155,14 +155,25 @@ ol li,ul li{margin-bottom:3px}
 
   <!-- ============ 今日 ============ -->
   <section class="sec on" id="sec-today">
+    <div class="card tight" style="margin-bottom:12px">
+      <div class="row" style="gap:8px">
+        <button class="btn gh sm" style="width:auto;padding:7px 13px" id="btnPrevDay">‹</button>
+        <input type="date" id="inpDate"
+          style="flex:1;min-width:0;border:1px solid var(--line2);border-radius:9px;padding:8px 10px;background:#FCFBF9;font-size:15px;font-variant-numeric:tabular-nums">
+        <button class="btn gh sm" style="width:auto;padding:7px 13px" id="btnNextDay">›</button>
+        <button class="btn sec sm" style="width:auto;padding:7px 13px" id="btnToday">今天</button>
+      </div>
+      <div class="mini" id="dateHint" style="margin-top:8px;text-align:center"></div>
+    </div>
+
     <div class="grid g3" style="margin-bottom:12px">
-      <div class="kpi"><div class="v" id="kMin">0</div><div class="l">今日分钟</div><div class="d" id="kMinD">目标 --</div></div>
-      <div class="kpi"><div class="v" id="kOpen">0</div><div class="l">打开次数</div><div class="d" id="kOpenD">--</div></div>
+      <div class="kpi"><div class="v" id="kMin">0</div><div class="l" id="kMinL">今日分钟</div><div class="d" id="kMinD">目标 --</div></div>
+      <div class="kpi"><div class="v" id="kOpen">0</div><div class="l" id="kOpenL">打开次数</div><div class="d" id="kOpenD">--</div></div>
       <div class="kpi"><div class="v" id="kStreak">0</div><div class="l">连续达标</div><div class="d mut">天</div></div>
     </div>
 
     <div class="card">
-      <div class="ttl">今日使用录入 <span class="sub">· 从 iPhone 屏幕使用时间报告读取后填入</span></div>
+      <div class="ttl"><span id="logTtl">今日使用录入</span> <span class="sub">· 从 iPhone 屏幕使用时间报告读取后填入</span></div>
       <div id="appRows"></div>
       <div class="row" id="addWrap" style="display:none;margin-top:10px">
         <input id="inpNewApp" placeholder="项目名称，例如 B站" maxlength="12"
@@ -183,8 +194,8 @@ ol li,ul li{margin-bottom:3px}
     </div>
 
     <div class="card">
-      <div class="ttl">今晚复盘 <span class="sub">· 选填，但对找规律很关键</span></div>
-      <div class="ttl" style="margin-bottom:6px">今天最想看的时刻在做什么</div>
+      <div class="ttl"><span id="reviewTtl">今晚复盘</span> <span class="sub">· 选填，但对找规律很关键</span></div>
+      <div class="ttl" id="sceneTtl" style="margin-bottom:6px">今天最想看的时刻在做什么</div>
       <div class="chips" id="sceneChips" style="margin-bottom:12px"></div>
       <div class="ttl" style="margin-bottom:6px">当时的情绪</div>
       <div class="chips" id="moodChips" style="margin-bottom:12px"></div>
@@ -201,7 +212,10 @@ ol li,ul li{margin-bottom:3px}
   <!-- ============ 分析 ============ -->
   <section class="sec" id="sec-stat">
     <div class="card">
-      <div class="ttl">近 14 天总时长 <span class="sub">· 虚线为目标线</span></div>
+      <div class="between" style="margin-bottom:10px">
+        <div class="ttl" style="margin:0"><span id="trendTtl">近 14 天</span>总时长 <span class="sub">· 虚线为目标线</span></div>
+        <div class="chips" id="rngChips"></div>
+      </div>
       <canvas id="cTrend" height="170"></canvas>
       <div id="fbTrend"></div>
     </div>
@@ -213,7 +227,7 @@ ol li,ul li{margin-bottom:3px}
     </div>
 
     <div class="card">
-      <div class="ttl">近 7 天各 App 累计时长</div>
+      <div class="ttl"><span id="appTtl">近 7 天</span>各 App 累计时长</div>
       <canvas id="cApps" height="150"></canvas>
       <div id="fbApps"></div>
     </div>
@@ -402,7 +416,7 @@ var MINDFUL = [
 /* ---------- state ---------- */
 function defState(){
   return { v:1, apps:DEF_APPS.slice(), daily:{}, urges:[], pw:[],
-    settings:{ target:30, cooldown:120, waitMin:10, pwMode:4 } };
+    settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14 } };
 }
 var S = (function(){
   try{
@@ -411,6 +425,7 @@ var S = (function(){
     var o = JSON.parse(raw), d = defState();
     for(var k in d){ if(!(k in o)) o[k] = d[k]; }
     if(!o.settings) o.settings = d.settings;
+    for(var sk in d.settings){ if(!(sk in o.settings)) o.settings[sk] = d.settings[sk]; }
     return o;
   }catch(e){ return defState(); }
 })();
@@ -422,6 +437,20 @@ function dkey(d){ d = d || new Date(); return d.getFullYear()+'-'+pad(d.getMonth
 function dayLabel(k){ var p=k.split('-'); return (+p[1])+'/'+(+p[2]); }
 function shiftDay(n){ var d=new Date(); d.setDate(d.getDate()+n); return dkey(d); }
 function lastDays(n){ var a=[]; for(var i=n-1;i>=0;i--) a.push(shiftDay(-i)); return a; }
+/* 当前正在编辑/查看的日期（默认今天，可切换去补录历史） */
+var curDate = null;
+function curD(){ return curDate || dkey(); }
+function parseKey(k){ var p=k.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+function keyShift(k, n){ var d=parseKey(k); d.setDate(d.getDate()+n); return dkey(d); }
+function isToday(k){ return k === dkey(); }
+var WK = ['周日','周一','周二','周三','周四','周五','周六'];
+function wkOf(k){ return WK[parseKey(k).getDay()]; }
+function dateHuman(k){
+  if(isToday(k)) return '今天';
+  if(k === shiftDay(-1)) return '昨天';
+  if(k === shiftDay(-2)) return '前天';
+  var p=k.split('-'); return (+p[1])+'月'+(+p[2])+'日 '+wkOf(k);
+}
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function $(id){ return document.getElementById(id); }
@@ -437,6 +466,7 @@ for(var i=0;i<navBtns.length;i++){
     for(var j=0;j<navBtns.length;j++) navBtns[j].className = (navBtns[j]===this ? 'on' : '');
     var secs = document.querySelectorAll('.sec');
     for(var j=0;j<secs.length;j++) secs[j].className = 'sec' + (secs[j].id === 'sec-'+t ? ' on' : '');
+    if(t==='today') renderToday();
     if(t==='stat') renderStat();
     if(t==='pw') renderPw();
     if(t==='surf') renderUrgeList();
@@ -456,8 +486,27 @@ function chips(host, arr, cur, cb){
   });
 }
 function renderToday(){
-  var t = dkey();
+  var t = curD();
   $('hdDate').textContent = (new Date().getMonth()+1)+'月'+(new Date().getDate())+'日';
+
+  var di=$('inpDate');
+  di.value = t; di.max = dkey();
+  $('btnNextDay').disabled = (t >= dkey());
+  $('btnNextDay').style.opacity = (t >= dkey()) ? .4 : 1;
+  var lbl = dateHuman(t);
+  $('dateHint').innerHTML = isToday(t)
+    ? '正在记录 <b>今天</b> ' + wkOf(t) + ' · 想补前几天的数据，直接改上面的日期'
+    : '正在查看 <b>' + esc(lbl) + '</b> · 录入的数据会记到这一天'
+      + ' <span id="btnBackToday" style="color:var(--ac);text-decoration:underline;cursor:pointer">回到今天</span>';
+  var bt=$('btnBackToday'); if(bt) bt.onclick = function(){ curDate=null; renderToday(); };
+
+  var isT = isToday(t);
+  $('kMinL').textContent = isT ? '今日分钟' : '当天分钟';
+  $('kOpenL').textContent = '打开次数';
+  $('logTtl').textContent = isT ? '今日使用录入' : (lbl + ' 使用录入');
+  $('reviewTtl').textContent = isT ? '今晚复盘' : (lbl + ' 复盘');
+  $('sceneTtl').textContent = isT ? '今天最想看的时刻在做什么' : '那天最想看的时刻在做什么';
+
   var d = day(t);
 
   var host=$('appRows'); host.innerHTML='';
@@ -504,7 +553,26 @@ function renderToday(){
 $('inpTarget').addEventListener('input', function(){
   S.settings.target = Math.max(0, parseInt(this.value||'0',10)||0); save(); updateKpi();
 });
-$('inpNote').addEventListener('input', function(){ day(dkey()).note = this.value; save(); });
+$('inpNote').addEventListener('input', function(){ day(curD()).note = this.value; save(); });
+
+/* 日期切换 */
+$('inpDate').addEventListener('change', function(){
+  var v = this.value;
+  if(!v){ curDate=null; renderToday(); return; }
+  if(v > dkey()){ v = dkey(); this.value = v; }
+  curDate = v; renderToday();
+});
+$('btnPrevDay').addEventListener('click', function(){
+  var k = keyShift(curD(), -1);
+  if(k < '2000-01-01') return;
+  curDate = k; renderToday();
+});
+$('btnNextDay').addEventListener('click', function(){
+  var k = keyShift(curD(), 1);
+  if(k > dkey()) k = dkey();
+  curDate = k; renderToday();
+});
+$('btnToday').addEventListener('click', function(){ curDate=null; renderToday(); });
 $('btnShowAdd').addEventListener('click', function(){
   $('addWrap').style.display='flex'; this.style.display='none'; $('inpNewApp').focus();
 });
@@ -517,21 +585,22 @@ $('btnAddApp').addEventListener('click', function(){
 $('inpNewApp').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('btnAddApp').click(); });
 
 function updateKpi(){
-  var t=dkey(), m=tot(t,'m'), o=tot(t,'o'), tg=S.settings.target||0;
+  var t=curD(), m=tot(t,'m'), o=tot(t,'o'), tg=S.settings.target||0;
   $('kMin').textContent = m;
   $('kOpen').textContent = o;
   var ratio = tg>0 ? m/tg : 0;
   $('kMinD').textContent = tg>0 ? (m<=tg ? '剩 '+(tg-m)+' 分' : '超 '+(m-tg)+' 分') : '未设目标';
   $('kMinD').className = 'd ' + (tg>0 ? (m<=tg?'dn':'up') : 'mut');
 
-  var y = shiftDay(-1);
+  var y = keyShift(t, -1);
   var ym = S.daily[y] ? tot(y,'m') : null;
   if(ym!=null && ym>0){
     var p = Math.round((m-ym)/ym*100);
-    $('kOpenD').textContent = (p>0?'+':'')+p+'% 昨天';
+    $('kOpenD').textContent = (p>0?'+':'')+p+'% '+(isToday(t)?'昨天':'前一天');
     $('kOpenD').className = 'd ' + (p>0?'up':'dn');
   } else { $('kOpenD').textContent='--'; $('kOpenD').className='d mut'; }
 
+  /* 连续达标始终从「真实今天」往前算，不随查看日期变化 */
   var st=0, td=dkey(), guard=0;
   var hasToday = !!(S.daily[td] && (tot(td,'m')>0 || S.daily[td].note || S.daily[td].scene));
   for(var i=(hasToday?0:1); i<400; i++, guard++){
@@ -570,7 +639,17 @@ function miniBars(hostId, items, unit){
   host.innerHTML = h + '</div>';
 }
 function renderStat(){
-  var days = lastDays(14), tg = S.settings.target||0;
+  var RNG = [7,14,30];
+  var rng = S.settings.range || 14;
+  if(RNG.indexOf(rng) < 0) rng = 14;
+  chips($('rngChips'), RNG.map(function(x){ return '近'+x+'天'; }), '近'+rng+'天', function(x){
+    S.settings.range = parseInt(String(x).replace(/[^0-9]/g,''),10) || 14;
+    save(); renderStat();
+  });
+  $('trendTtl').textContent = '近 ' + rng + ' 天';
+  $('appTtl').textContent = '近 ' + rng + ' 天';
+
+  var days = lastDays(rng), tg = S.settings.target||0;
   var mv = days.map(function(d){ return S.daily[d] ? tot(d,'m') : 0; });
   var ov = days.map(function(d){ return S.daily[d] ? tot(d,'o') : 0; });
 
@@ -612,7 +691,7 @@ function renderStat(){
   $('sRate').className = 'v ' + (u7.length && res/u7.length>=.5 ? 'dn' : (u7.length?'up':''));
 
   var appItems = S.apps.map(function(a){
-    var s=0; w7.forEach(function(d){ if(S.daily[d] && S.daily[d].usage[a]) s += (S.daily[d].usage[a].m||0); });
+    var s=0; days.forEach(function(d){ if(S.daily[d] && S.daily[d].usage[a]) s += (S.daily[d].usage[a].m||0); });
     return {k:a, v:Math.round(s)};
   }).sort(function(x,y){ return y.v-x.v; });
   var okA = mk('cApps', {
@@ -655,9 +734,16 @@ function renderStat(){
       var tags = '<span class="tag '+cls+'">'+m+' 分 / '+o+' 次</span>';
       if(S.daily[k].scene) tags += '<span class="tag a">'+esc(S.daily[k].scene)+'</span>';
       if(S.daily[k].mood) tags += '<span class="tag">'+esc(S.daily[k].mood)+'</span>';
-      return '<div class="li"><div class="between"><b>'+dayLabel(k)+'</b><span>'+tags+'</span></div>'+
+      return '<div class="li" data-go="'+k+'" style="cursor:pointer"><div class="between"><b>'+dayLabel(k)+'</b><span>'+tags+'</span></div>'+
         (S.daily[k].note ? '<div class="mini" style="margin-top:4px">'+esc(S.daily[k].note)+'</div>' : '')+'</div>';
     }).join('');
+    var gos = hl.querySelectorAll('[data-go]');
+    for(var gi=0; gi<gos.length; gi++){
+      gos[gi].addEventListener('click', function(){
+        curDate = this.getAttribute('data-go');
+        document.querySelector('nav button[data-t="today"]').click();
+      });
+    }
   }
 }
 function renderInsights(days, mv, ov){
