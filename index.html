@@ -40,7 +40,7 @@ header .tt{display:flex;align-items:baseline;justify-content:space-between}
 header h1{font-size:20px;letter-spacing:.5px}
 header .dt{font-size:13px;color:var(--tx3)}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:10px}
 .card.tight{padding:12px}
 .ttl{font-size:13px;color:var(--tx2);font-weight:600;letter-spacing:.3px;margin-bottom:10px}
 .ttl .sub{font-weight:400;color:var(--tx3);font-size:12px}
@@ -52,8 +52,8 @@ header .dt{font-size:13px;color:var(--tx3)}
 .g3{grid-template-columns:1fr 1fr 1fr}
 .g4{grid-template-columns:repeat(4,1fr)}
 
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 10px;text-align:center}
-.kpi .v{font-size:22px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 8px;text-align:center}
+.kpi .v{font-size:21px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
 .kpi .l{font-size:11px;color:var(--tx3);margin-top:2px}
 .kpi .d{font-size:11px;margin-top:2px;font-variant-numeric:tabular-nums}
 .up{color:var(--up)} .dn{color:var(--dn)} .mut{color:var(--tx3)}
@@ -126,6 +126,19 @@ nav button.on .ic{background:var(--ac)}
 .tag.d{background:var(--dn-l);color:var(--dn)}
 canvas{max-width:100%}
 .empty{text-align:center;color:var(--tx3);font-size:13px;padding:26px 10px}
+/* 折叠块 */
+.fold{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
+.fold .fhd{display:flex;align-items:center;gap:8px;padding:11px 13px;cursor:pointer;
+  font-size:13px;font-weight:600;color:var(--tx2);letter-spacing:.3px;user-select:none}
+.fold .fhd:active{background:#FAF9F6}
+.fold .fhd .fdsub{font-weight:400;color:var(--tx3);font-size:12px;flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fold .fhd .ar{color:var(--tx3);font-size:11px;transition:transform .18s;flex:none}
+.fold.op .fhd .ar{transform:rotate(180deg)}
+.fold .fbd{display:none;padding:0 14px 14px}
+.fold.op .fbd{display:block}
+.more{width:100%;padding:9px 0;text-align:center;font-size:12px;color:var(--ac);
+  background:none;border:none;cursor:pointer;border-top:1px solid var(--line)}
 .seg{display:flex;background:#EFEDE8;border-radius:9px;padding:2px}
 .seg button{flex:1;padding:6px 0;font-size:13px;border-radius:7px;color:var(--tx2)}
 .seg button.on{background:var(--card);color:var(--tx);font-weight:500}
@@ -216,46 +229,50 @@ ol li,ul li{margin-bottom:3px}
         <div class="ttl" style="margin:0"><span id="trendTtl">近 14 天</span>总时长 <span class="sub">· 虚线为目标线</span></div>
         <div class="chips" id="rngChips"></div>
       </div>
-      <canvas id="cTrend" height="170"></canvas>
+      <canvas id="cTrend" height="122"></canvas>
       <div id="fbTrend"></div>
-    </div>
-
-    <div class="grid g3" style="margin-bottom:12px">
-      <div class="kpi"><div class="v" id="sAvg">0</div><div class="l">7日均分钟</div><div class="d" id="sAvgD">--</div></div>
-      <div class="kpi"><div class="v" id="sPer">0</div><div class="l">单次均分钟</div><div class="d mut">时长÷次数</div></div>
-      <div class="kpi"><div class="v" id="sRate">--</div><div class="l">冲动抵抗率</div><div class="d mut">近7天</div></div>
-    </div>
-
-    <div class="card">
-      <div class="ttl"><span id="appTtl">近 7 天</span>各 App 累计时长</div>
-      <canvas id="cApps" height="150"></canvas>
-      <div id="fbApps"></div>
-    </div>
-
-    <div class="card">
-      <div class="ttl">冲动发生的时段分布 <span class="sub">· 来自冲浪记录</span></div>
-      <canvas id="cHour" height="150"></canvas>
-      <div id="fbHour"></div>
+      <div class="grid g3" style="margin-top:12px">
+        <div class="kpi"><div class="v" id="sAvg">0</div><div class="l">7日均分钟</div><div class="d" id="sAvgD">--</div></div>
+        <div class="kpi"><div class="v" id="sPer">0</div><div class="l">单次均分钟</div><div class="d mut">时长÷次数</div></div>
+        <div class="kpi"><div class="v" id="sRate">--</div><div class="l">冲动抵抗率</div><div class="d mut">近7天</div></div>
+      </div>
     </div>
 
     <div class="card">
       <div class="ttl">自动洞察</div>
       <div class="list" id="insights"></div>
+      <button class="more" id="insMore" style="display:none"></button>
     </div>
 
-    <div class="card">
-      <div class="ttl">历史记录 <span class="sub">· 点一天可补录</span></div>
-      <div class="list" id="histList"></div>
+    <div class="fold" data-fold="apps">
+      <div class="fhd">各 App 累计 <span class="fdsub" id="appsSub"></span><i class="ar">▾</i></div>
+      <div class="fbd"><canvas id="cApps" height="130"></canvas><div id="fbApps"></div></div>
     </div>
 
-    <div class="card">
-      <div class="ttl">数据管理</div>
-      <div class="grid g2">
-        <button class="btn gh sm" id="btnExport">导出备份</button>
-        <button class="btn gh sm" id="btnImport">导入备份</button>
+    <div class="fold" data-fold="hour">
+      <div class="fhd">冲动时段分布 <span class="fdsub" id="hourSub"></span><i class="ar">▾</i></div>
+      <div class="fbd"><canvas id="cHour" height="120"></canvas><div id="fbHour"></div></div>
+    </div>
+
+    <div class="fold" data-fold="hist">
+      <div class="fhd">历史记录 <span class="fdsub" id="histSub"></span><i class="ar">▾</i></div>
+      <div class="fbd">
+        <div class="list" id="histList"></div>
+        <button class="more" id="histMore" style="display:none"></button>
+        <div class="mini" style="margin-top:10px">点任意一天可跳回录入页补录那天的数据。</div>
       </div>
-      <input type="file" id="fileImp" accept="application/json" style="display:none">
-      <div class="mini" style="margin-top:10px">数据只存在这台设备的浏览器里，换手机请用导出/导入迁移。清除浏览器数据会丢。</div>
+    </div>
+
+    <div class="fold" data-fold="data">
+      <div class="fhd">数据管理 <span class="fdsub"></span><i class="ar">▾</i></div>
+      <div class="fbd">
+        <div class="grid g2">
+          <button class="btn gh sm" id="btnExport">导出备份</button>
+          <button class="btn gh sm" id="btnImport">导入备份</button>
+        </div>
+        <input type="file" id="fileImp" accept="application/json" style="display:none">
+        <div class="mini" style="margin-top:10px">数据只存在这台设备的浏览器里，换手机请用导出/导入迁移。清除浏览器数据会丢。</div>
+      </div>
     </div>
   </section>
 
@@ -416,7 +433,7 @@ var MINDFUL = [
 /* ---------- state ---------- */
 function defState(){
   return { v:1, apps:DEF_APPS.slice(), daily:{}, urges:[], pw:[],
-    settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14 } };
+    settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14, fold:{} } };
 }
 var S = (function(){
   try{
@@ -617,6 +634,31 @@ function updateKpi(){
   var b=$('pgBar'); b.style.width = w+'%'; b.className = (tg>0 && m>tg) ? 'over' : '';
 }
 
+/* ---------- 折叠块 ---------- */
+function applyFolds(){
+  var fs=document.querySelectorAll('.fold');
+  for(var i=0;i<fs.length;i++){
+    var k=fs[i].getAttribute('data-fold');
+    fs[i].className = 'fold' + (S.settings.fold && S.settings.fold[k] ? ' op' : '');
+  }
+}
+(function(){
+  var fs=document.querySelectorAll('.fold');
+  for(var i=0;i<fs.length;i++){
+    (function(el){
+      var k = el.getAttribute('data-fold');
+      el.querySelector('.fhd').addEventListener('click', function(){
+        if(!S.settings.fold) S.settings.fold = {};
+        var willOpen = el.className.indexOf('op') < 0;
+        S.settings.fold[k] = willOpen;
+        save(); applyFolds();
+        /* 图表在隐藏容器里建会拿到 0 尺寸，展开时重建一次 */
+        if(willOpen && (k==='apps' || k==='hour')) setTimeout(renderStat, 10);
+      });
+    })(fs[i]);
+  }
+})();
+
 /* ---------- stat ---------- */
 var charts = {};
 function mk(id, cfg){
@@ -647,7 +689,6 @@ function renderStat(){
     save(); renderStat();
   });
   $('trendTtl').textContent = '近 ' + rng + ' 天';
-  $('appTtl').textContent = '近 ' + rng + ' 天';
 
   var days = lastDays(rng), tg = S.settings.target||0;
   var mv = days.map(function(d){ return S.daily[d] ? tot(d,'m') : 0; });
@@ -706,9 +747,13 @@ function renderStat(){
   });
   if(!okA) miniBars('fbApps', appItems, '分');
   else $('fbApps').innerHTML='';
+  var topA = appItems.filter(function(x){ return x.v>0; })[0];
+  $('appsSub').textContent = topA ? (topA.k+' '+topA.v+' 分 · 近'+rng+'天') : '暂无数据';
 
   var hours = new Array(24).fill ? new Array(24).fill(0) : (function(){var a=[];for(var i=0;i<24;i++)a.push(0);return a;})();
   S.urges.forEach(function(u){ var h=new Date(u.ts).getHours(); hours[h]++; });
+  var topHr=null, topHn=0;
+  for(var hi=0;hi<24;hi++){ if(hours[hi]>topHn){ topHn=hours[hi]; topHr=hi; } }
   var hItems=[]; for(var h=0;h<24;h++){ if(hours[h]>0) hItems.push({k:pad(h)+':00', v:hours[h]}); }
   var okH = mk('cHour', {
     type:'bar',
@@ -720,31 +765,46 @@ function renderStat(){
   });
   if(!okH) miniBars('fbHour', hItems.slice(0,8), '次');
   else $('fbHour').innerHTML='';
+  $('hourSub').textContent = hItems.length
+    ? (hItems.length+' 个时段有冲动' + (topHr!=null ? ' · 最多 '+topHr+' 点' : ''))
+    : '暂无冲浪记录';
 
   renderInsights(days, mv, ov);
 
-  var hl=$('histList'); 
-  var ks = Object.keys(S.daily).sort().reverse().slice(0,30);
-  if(!ks.length){ hl.innerHTML='<div class="empty">还没有记录，先去「今日」填一天</div>'; }
-  else{
-    hl.innerHTML = ks.map(function(k){
-      var m=tot(k,'m'), o=tot(k,'o');
-      var tgd = S.daily[k].target!=null ? S.daily[k].target : tg;
-      var cls = (tgd>0 && m>tgd) ? 'u' : 'd';
-      var tags = '<span class="tag '+cls+'">'+m+' 分 / '+o+' 次</span>';
-      if(S.daily[k].scene) tags += '<span class="tag a">'+esc(S.daily[k].scene)+'</span>';
-      if(S.daily[k].mood) tags += '<span class="tag">'+esc(S.daily[k].mood)+'</span>';
-      return '<div class="li" data-go="'+k+'" style="cursor:pointer"><div class="between"><b>'+dayLabel(k)+'</b><span>'+tags+'</span></div>'+
-        (S.daily[k].note ? '<div class="mini" style="margin-top:4px">'+esc(S.daily[k].note)+'</div>' : '')+'</div>';
-    }).join('');
-    var gos = hl.querySelectorAll('[data-go]');
-    for(var gi=0; gi<gos.length; gi++){
-      gos[gi].addEventListener('click', function(){
-        curDate = this.getAttribute('data-go');
-        document.querySelector('nav button[data-t="today"]').click();
-      });
-    }
+  ALLHIST = Object.keys(S.daily).sort().reverse();
+  $('histSub').textContent = ALLHIST.length ? ALLHIST.length+' 天' : '';
+  renderHist(tg);
+}
+var ALLHIST = [], HIST_OPEN = false;
+function renderHist(tg){
+  var hl=$('histList'), tg = (tg!=null?tg:(S.settings.target||0));
+  var ks = ALLHIST;
+  if(!ks.length){ hl.innerHTML='<div class="empty">还没有记录，先去「今日」填一天</div>'; $('histMore').style.display='none'; return; }
+  var lim = HIST_OPEN ? ks.length : 6;
+  var show = ks.slice(0, lim);
+  hl.innerHTML = show.map(function(k){
+    var m=tot(k,'m'), o=tot(k,'o');
+    var tgd = S.daily[k].target!=null ? S.daily[k].target : tg;
+    var cls = (tgd>0 && m>tgd) ? 'u' : 'd';
+    var tags = '<span class="tag '+cls+'">'+m+' 分 / '+o+' 次</span>';
+    if(S.daily[k].scene) tags += '<span class="tag a">'+esc(S.daily[k].scene)+'</span>';
+    if(S.daily[k].mood) tags += '<span class="tag">'+esc(S.daily[k].mood)+'</span>';
+    return '<div class="li" data-go="'+k+'" style="cursor:pointer"><div class="between"><b>'+dayLabel(k)+'</b><span>'+tags+'</span></div>'+
+      (S.daily[k].note ? '<div class="mini" style="margin-top:4px">'+esc(S.daily[k].note)+'</div>' : '')+'</div>';
+  }).join('');
+  var gos = hl.querySelectorAll('[data-go]');
+  for(var gi=0; gi<gos.length; gi++){
+    gos[gi].addEventListener('click', function(){
+      curDate = this.getAttribute('data-go');
+      document.querySelector('nav button[data-t="today"]').click();
+    });
   }
+  var mb = $('histMore');
+  if(ks.length > 6){
+    mb.style.display = '';
+    mb.textContent = HIST_OPEN ? '收起' : '展开全部 '+ks.length+' 天';
+    mb.onclick = function(){ HIST_OPEN = !HIST_OPEN; renderHist(tg); };
+  } else mb.style.display = 'none';
 }
 function renderInsights(days, mv, ov){
   var out=[], tg=S.settings.target||0;
@@ -777,9 +837,21 @@ function renderInsights(days, mv, ov){
   var pwU = S.pw.reduce(function(a,p){ return a + (p.unlockCount||0); }, 0);
   if(pwU) out.push(['开锁次数', '你累计申请紧急开锁 '+pwU+' 次。每次开锁都是一次真实的决策成本，这个数字本身就是在起作用。']);
 
-  $('insights').innerHTML = out.length
-    ? out.map(function(x){ return '<div class="li"><b>'+esc(x[0])+'</b><div class="mini" style="margin-top:3px">'+esc(x[1])+'</div></div>'; }).join('')
+  INS = out; renderIns();
+}
+var INS = [], INS_OPEN = false;
+function renderIns(){
+  var lim = INS_OPEN ? INS.length : 3;
+  var show = INS.slice(0, lim);
+  $('insights').innerHTML = show.length
+    ? show.map(function(x){ return '<div class="li"><b>'+esc(x[0])+'</b><div class="mini" style="margin-top:3px">'+esc(x[1])+'</div></div>'; }).join('')
     : '<div class="empty">记录 3 天以上才会出现洞察</div>';
+  var mb = $('insMore');
+  if(INS.length > 3){
+    mb.style.display = '';
+    mb.textContent = INS_OPEN ? '收起' : '展开剩下 ' + (INS.length-3) + ' 条';
+    mb.onclick = function(){ INS_OPEN = !INS_OPEN; renderIns(); };
+  } else { mb.style.display = 'none'; }
 }
 
 /* ---------- surf ---------- */
@@ -1077,6 +1149,7 @@ $('fileImp').addEventListener('change', function(){
 });
 
 /* ---------- boot ---------- */
+applyFolds();
 renderToday();
 renderSurfForm();
 (function(){
