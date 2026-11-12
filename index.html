@@ -113,8 +113,8 @@ nav button .ic{width:22px;height:22px;border-radius:7px;background:var(--line);}
 nav button.on{color:var(--ac)}
 nav button.on .ic{background:var(--ac)}
 
-.sec{display:none}
-.sec.on{display:block;animation:fi .22s ease}
+section.sec{display:none}
+section.sec.on{display:block;animation:fi .22s ease}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
 .mini{font-size:12px;color:var(--tx3);line-height:1.65}
@@ -132,6 +132,18 @@ canvas{max-width:100%}
 .ch{position:relative;width:100%}
 .ch canvas{width:100% !important;height:100% !important}
 .empty{text-align:center;color:var(--tx3);font-size:13px;padding:26px 10px}
+/* v7 视图切换 / 分享图 */
+.viewchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.viewchips .chip{padding:5px 10px;font-size:12px}
+.subsum{font-size:12px;color:var(--tx3);margin:-4px 0 8px;line-height:1.5}
+.poster-mask{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(31,30,28,.62);
+  z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
+.poster-box{background:var(--card);border-radius:16px;padding:14px;width:100%;max-width:360px;
+  max-height:88vh;overflow:auto;text-align:center}
+.poster-box img{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}
+.poster-box .btns{display:flex;gap:8px;margin-top:12px}
+.poster-box .btns>*{flex:1;width:auto}
+.poster-box a.btn{text-decoration:none}
 /* 折叠块 */
 .fold{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
 .fold .fhd{display:flex;align-items:center;gap:8px;padding:11px 13px;cursor:pointer;
@@ -233,9 +245,11 @@ ol li,ul li{margin-bottom:3px}
   <section class="sec" id="sec-stat">
     <div class="card">
       <div class="between" style="margin-bottom:10px">
-        <div class="ttl" style="margin:0"><span id="trendTtl">近 14 天</span>总时长 <span class="sub">· 虚线为目标线</span></div>
+        <div class="ttl" style="margin:0"><span id="trendTtl">近 14 天 · 全部</span> <span class="sub">· 分钟 / 打开次数</span></div>
         <div class="chips" id="rngChips"></div>
       </div>
+      <div class="viewchips" id="viewChips"></div>
+      <div class="subsum" id="viewSum"></div>
       <div class="ch" style="height:180px"><canvas id="cTrend"></canvas></div>
       <div id="fbTrend"></div>
       <div class="grid g3" style="margin-top:12px">
@@ -243,6 +257,8 @@ ol li,ul li{margin-bottom:3px}
         <div class="kpi"><div class="v" id="sPer">0</div><div class="l">单次均分钟</div><div class="d mut">时长÷次数</div></div>
         <div class="kpi"><div class="v" id="sRate">--</div><div class="l">冲动抵抗率</div><div class="d mut">近7天</div></div>
       </div>
+      <button class="btn sm" id="btnPoster" style="width:100%;margin-top:12px">生成分享图片</button>
+      <div class="mini" style="text-align:center;margin-top:6px">图片跟随当前选中的项目 · 数据只在本机</div>
     </div>
 
     <div class="card">
@@ -280,6 +296,7 @@ ol li,ul li{margin-bottom:3px}
         <button class="btn gh sm" id="btnHardReload" style="width:100%;margin-top:8px">强制刷新（看不到更新时点）</button>
         <input type="file" id="fileImp" accept="application/json" style="display:none">
         <div class="mini" style="margin-top:10px">数据只存在这台设备的浏览器里，换手机请用导出/导入迁移。清除浏览器数据会丢。网页更新不会动你的数据。</div>
+        <div class="mini" style="margin-top:6px">v7 新增：趋势图可切「全部 / 单个项目」；分析页可生成分享图片。</div>
         <div class="mini" style="margin-top:6px">版本 <b id="verTxt"></b></div>
       </div>
     </div>
@@ -414,6 +431,18 @@ ol li,ul li{margin-bottom:3px}
   <button data-t="pw"><i class="ic"></i>密码</button>
 </nav>
 
+<div class="poster-mask" id="posterMask" style="display:none">
+  <div class="poster-box">
+    <div class="ttl" style="margin-bottom:8px">分享图预览</div>
+    <img id="posterImg" alt="断短剧 分享图">
+    <div class="btns">
+      <a class="btn sm" id="btnPosterSave" download="duanju-poster.png">下载图片</a>
+      <button class="btn gh sm" id="btnPosterClose">关闭</button>
+    </div>
+    <div class="mini" style="margin-top:8px">手机上也可长按图片保存到相册，再发到公众号；图不会自动上传。</div>
+  </div>
+</div>
+
 <script>
 (function(){
 'use strict';
@@ -440,10 +469,10 @@ var MINDFUL = [
 ];
 
 /* ---------- state ---------- */
-var APP_VER = 'v6';
+var APP_VER = 'v7';
 function defState(){
   return { v:1, apps:DEF_APPS.slice(), daily:{}, urges:[], pw:[],
-    settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14, fold:{} } };
+    settings:{ target:30, cooldown:120, waitMin:10, pwMode:4, range:14, fold:{}, viewApp:'' } };
 }
 var S = (function(){
   try{
@@ -484,6 +513,16 @@ function $(id){ return document.getElementById(id); }
 function day(d){ if(!S.daily[d]) S.daily[d] = { usage:{}, scene:'', mood:'', note:'' };
   if(!S.daily[d].usage) S.daily[d].usage = {}; return S.daily[d]; }
 function tot(d, f){ var o=day(d).usage, s=0; for(var a in o) s += (f==='o' ? (o[a].o||0) : (o[a].m||0)); return s; }
+/* 趋势视图：'' = 全部项目，否则为某个项目名 */
+function viewApp(){ return S.settings.viewApp || ''; }
+function viewVal(d, f){
+  if(!S.daily[d]) return 0;
+  var a = viewApp();
+  if(!a) return tot(d, f);
+  var u = S.daily[d].usage;
+  if(!u || !u[a]) return 0;
+  return f==='o' ? (u[a].o||0) : (u[a].m||0);
+}
 
 /* ---------- nav ---------- */
 var navBtns = document.querySelectorAll('nav button');
@@ -700,11 +739,23 @@ function renderStat(){
     S.settings.range = parseInt(String(x).replace(/[^0-9]/g,''),10) || 14;
     save(); renderStat();
   });
-  $('trendTtl').textContent = '近 ' + rng + ' 天';
-
   var days = lastDays(rng), tg = S.settings.target||0;
-  var mv = days.map(function(d){ return S.daily[d] ? tot(d,'m') : 0; });
-  var ov = days.map(function(d){ return S.daily[d] ? tot(d,'o') : 0; });
+
+  /* v7：趋势图可看全部，也可只看单个项目 */
+  var va = viewApp();
+  if(va && S.apps.indexOf(va) < 0){ va=''; S.settings.viewApp=''; }
+  var scopes = ['全部'].concat(S.apps);
+  chips($('viewChips'), scopes, va || '全部', function(x){
+    S.settings.viewApp = (x === '全部' ? '' : x);
+    save(); renderStat();
+  });
+  var mv = days.map(function(d){ return viewVal(d,'m'); });
+  var ov = days.map(function(d){ return viewVal(d,'o'); });
+  var mSum = mv.reduce(function(a,b){ return a+b; }, 0);
+  $('trendTtl').textContent = '近 ' + rng + ' 天 · ' + (va || '全部');
+  $('viewSum').textContent = va
+    ? '「'+va+'」合计 '+mSum+' 分钟 · 日均 '+Math.round(mSum/rng)+' 分（下方 KPI 仍按全部项目算）'
+    : '共 '+S.apps.length+' 个项目 · 合计 '+mSum+' 分钟 · 日均 '+Math.round(mSum/rng)+' 分';
 
   var okT = mk('cTrend', {
     type:'line',
@@ -716,9 +767,10 @@ function renderStat(){
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ labels:{ boxWidth:10, font:{size:11} } } },
       scales:{ y:{ beginAtZero:true, grid:{color:'#EFEDE8'}, ticks:{font:{size:10}} },
-               x:{ grid:{display:false}, ticks:{font:{size:10}} } } }
+               x:{ grid:{display:false}, ticks:{font:{size:10}, maxRotation:0, autoSkip:true, maxTicksLimit:8} } } }
   });
-  if(!okT) miniBars('fbTrend', days.map(function(d,i){ return {k:dayLabel(d), v:mv[i]}; }), '分');
+  if(va && mSum===0) $('fbTrend').innerHTML = '<div class="empty" style="padding:10px">这段时间「'+esc(va)+'」还没有记录</div>';
+  else if(!okT) miniBars('fbTrend', days.map(function(d,i){ return {k:dayLabel(d), v:mv[i]}; }), '分');
   else $('fbTrend').innerHTML='';
 
   var w7 = lastDays(7), w7p = lastDays(14).slice(0,7);
@@ -1134,6 +1186,128 @@ for(var i=0;i<pmbtns.length;i++){
     S.settings.pwMode = parseInt(this.getAttribute('data-m'),10); save(); renderPw();
   });
 }
+
+/* ---------- poster (v7) ---------- */
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function clipTxt(ctx,s,maxW){
+  var t=String(s);
+  while(t.length>1 && ctx.measureText(t).width>maxW) t=t.slice(0,-1);
+  return t;
+}
+function wrapTxt(ctx,text,x,y,maxW,lh){
+  var str=String(text).trim(), ss=[], buf='';
+  for(var i=0;i<str.length;i++){
+    buf+=str[i];
+    if('。！？；'.indexOf(str[i])>=0){ ss.push(buf.trim()); buf=''; }
+  }
+  if(buf.trim()) ss.push(buf.trim());
+  var yy=y;
+  ss.forEach(function(s){
+    var line='', cs=s.split('');
+    for(var j=0;j<cs.length;j++){
+      if(line && ctx.measureText(line+cs[j]).width>maxW){ ctx.fillText(line,x,yy); yy+=lh; line=cs[j]; }
+      else line+=cs[j];
+    }
+    if(line){ ctx.fillText(line,x,yy); yy+=lh; }
+  });
+}
+function posterData(){
+  var rng = S.settings.range||14;
+  if([7,14,30].indexOf(rng)<0) rng=14;
+  var days=lastDays(rng), va=viewApp();
+  var mv=days.map(function(d){ return viewVal(d,'m'); });
+  var w7=lastDays(7), sum7=0,cnt7=0,o7=0;
+  w7.forEach(function(d){ if(hasData(d)){ sum7+=tot(d,'m'); o7+=tot(d,'o'); cnt7++; } });
+  var apps=S.apps.map(function(a){
+    var s=0; days.forEach(function(d){ if(S.daily[d]&&S.daily[d].usage[a]) s+=(S.daily[d].usage[a].m||0); });
+    return {k:a,v:Math.round(s)};
+  }).filter(function(x){ return x.v>0; }).sort(function(x,y){ return y.v-x.v; }).slice(0,3);
+  var u7=S.urges.filter(function(u){ return u.ts>=Date.now()-7*864e5; });
+  var rate=u7.length ? Math.round(u7.filter(function(u){return u.outcome==='resisted';}).length/u7.length*100)+'%' : '--';
+  var ins = INS.length ? INS[0][1] : '记录几天后，这里会出现你的洞察。';
+  if(ins.length>72) ins=ins.slice(0,72)+'…';
+  return { rng:rng, days:days, va:va, mv:mv,
+    total:mv.reduce(function(a,b){ return a+b; },0),
+    avg:cnt7?Math.round(sum7/cnt7):0,
+    per:o7?(sum7/o7).toFixed(1):'0',
+    rate:rate, apps:apps, insight:ins };
+}
+function drawPoster(ctx,p){
+  var AC='#2F6F5E', LT='#E6F1EC', TX='#1F1E1C', MU='#9C978F';
+  var F='-apple-system,"PingFang SC",sans-serif';
+  ctx.clearRect(0,0,750,1200);
+  ctx.fillStyle='#F7F6F3'; ctx.fillRect(0,0,750,1200);
+  ctx.fillStyle='#FFFFFF'; rr(ctx,28,28,694,1144,32); ctx.fill();
+  ctx.save(); rr(ctx,28,28,694,192,32); ctx.clip();
+  ctx.fillStyle=AC; ctx.fillRect(28,28,694,192); ctx.restore();
+  ctx.fillStyle='#FFFFFF';
+  ctx.font='bold 26px '+F; ctx.fillText('断短剧 · 近 '+p.rng+' 天觉察',60,88);
+  ctx.font='400 40px '+F; ctx.fillText(dayLabel(p.days[0])+' – '+dayLabel(p.days[p.days.length-1]),60,152);
+  if(p.va){
+    ctx.fillStyle=MU; ctx.font='400 20px '+F;
+    ctx.fillText('指标按全部项目，下方趋势仅看「'+clipTxt(ctx,p.va,300)+'」',60,244);
+  }
+  var items=[['7日均分',p.avg],['单次均分',p.per],['冲动抵抗率',p.rate]];
+  var bw=196,bh=124,by=262,bx=60,gap=21;
+  items.forEach(function(it,i){
+    var x=bx+i*(bw+gap);
+    ctx.fillStyle=LT; rr(ctx,x,by,bw,bh,16); ctx.fill();
+    ctx.fillStyle='#6E6A63'; ctx.font='400 22px '+F; ctx.fillText(it[0],x+20,by+44);
+    ctx.fillStyle=AC; ctx.font='bold 46px '+F; ctx.fillText(String(it[1]),x+20,by+102);
+  });
+  ctx.fillStyle=LT; rr(ctx,60,408,630,300,20); ctx.fill();
+  ctx.fillStyle=AC; ctx.font='bold 24px '+F;
+  ctx.fillText(clipTxt(ctx,(p.va||'全部')+' · 使用趋势（分钟/天）',580),84,452);
+  var max=1; p.mv.forEach(function(v){ if(v>max) max=v; });
+  var px=function(i){ return 84+i*(582/Math.max(1,p.mv.length-1)); };
+  var py=function(v){ return 640-(v/max)*140; };
+  ctx.strokeStyle='#C9DDD3'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(84,640); ctx.lineTo(666,640); ctx.stroke();
+  ctx.strokeStyle=AC; ctx.lineWidth=5; ctx.lineJoin='round'; ctx.beginPath();
+  p.mv.forEach(function(v,i){ if(i===0) ctx.moveTo(px(i),py(v)); else ctx.lineTo(px(i),py(v)); });
+  ctx.stroke();
+  ctx.fillStyle=AC;
+  p.mv.forEach(function(v,i){ ctx.beginPath(); ctx.arc(px(i),py(v),5,0,Math.PI*2); ctx.fill(); });
+  ctx.fillStyle=MU; ctx.font='400 20px '+F;
+  ctx.fillText(dayLabel(p.days[0]),84,680);
+  ctx.textAlign='right'; ctx.fillText(dayLabel(p.days[p.days.length-1]),666,680); ctx.textAlign='left';
+  ctx.fillStyle=TX; ctx.font='bold 24px '+F; ctx.fillText('刷得最多',60,752);
+  if(!p.apps.length){
+    ctx.fillStyle=MU; ctx.font='400 22px '+F; ctx.fillText('暂无项目记录',60,800);
+  } else {
+    var amax=1; p.apps.forEach(function(a){ if(a.v>amax) amax=a.v; });
+    p.apps.forEach(function(a,i){
+      var y=776+i*56;
+      ctx.fillStyle=TX; ctx.font='400 22px '+F; ctx.fillText(clipTxt(ctx,a.k,120),60,y+18);
+      ctx.fillStyle='#EFEDE8'; rr(ctx,200,y,400,20,10); ctx.fill();
+      ctx.fillStyle=AC; rr(ctx,200,y,Math.max(12,400*a.v/amax),20,10); ctx.fill();
+      ctx.fillStyle=MU; ctx.textAlign='right'; ctx.fillText(String(a.v),690,y+18); ctx.textAlign='left';
+    });
+  }
+  ctx.fillStyle=AC; ctx.font='400 22px '+F; wrapTxt(ctx,p.insight,60,980,630,34);
+  ctx.strokeStyle='#E9E6E0'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(60,1096); ctx.lineTo(690,1096); ctx.stroke();
+  ctx.fillStyle=AC; ctx.font='400 22px '+F; ctx.fillText('断短剧 · 记录 → 看见 → 克制',60,1136);
+  ctx.fillStyle=MU; ctx.textAlign='right'; ctx.font='400 20px '+F;
+  ctx.fillText('数据只在本机',690,1136); ctx.textAlign='left';
+}
+function genPoster(){
+  var p=posterData();
+  var c=document.createElement('canvas'); c.width=750; c.height=1200;
+  drawPoster(c.getContext('2d'),p);
+  var url=c.toDataURL('image/png');
+  $('posterImg').src=url;
+  $('btnPosterSave').href=url;
+  $('btnPosterSave').setAttribute('download','断短剧-'+dkey()+'.png');
+  $('posterMask').style.display='flex';
+}
+$('btnPoster').addEventListener('click', genPoster);
+$('btnPosterClose').addEventListener('click', function(){ $('posterMask').style.display='none'; });
+$('posterMask').addEventListener('click', function(e){ if(e.target===this) this.style.display='none'; });
 
 /* ---------- import / export ---------- */
 $('btnExport').addEventListener('click', function(){
